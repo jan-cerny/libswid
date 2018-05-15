@@ -8,7 +8,8 @@ project(libswid)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 file(GLOB_RECURSE sources      src/*.cpp src/*.h)
-file(GLOB_RECURSE sources_test test/unit/*.cpp)
+file(GLOB_RECURSE sources_test_cxx test/unit/*.cpp)
+file(GLOB_RECURSE sources_test_c test/unit/*.c)
 # You can use set(sources src/main.cpp) etc if you don't want to
 # use globbing to find files automatically.
 
@@ -47,34 +48,41 @@ file(COPY ${data} DESTINATION resources)
 ## testing ####################################################################
 ###############################################################################
 
-add_executable(unit_tests ${sources_test} ${sources})
+add_executable(unit_tests++ ${sources_test_cxx} ${sources})
+add_executable(unit_tests ${sources_test_c} ${sources})
+add_executable(resaver ${sources} test/integration/resaver.cpp)
 
 # Don't include libswid as a library, use sources.
 # Not having explicit sources would destroy the coverage analysis.
 #
 # add_executable(unit_tests ${sources_test})
 # target_link_libraries(unit_tests PUBLIC swid)
+target_link_libraries(unit_tests++ ${XercesC_LIBRARIES} ${TinyXML_LIBRARIES})
 target_link_libraries(unit_tests ${XercesC_LIBRARIES} ${TinyXML_LIBRARIES})
 
 # This define is added to prevent collision with the main.
 # It might be better solved by not adding the source with the main to the
 # testing target.
+target_compile_definitions(unit_tests++ PUBLIC UNIT_TESTS)
 target_compile_definitions(unit_tests PUBLIC UNIT_TESTS)
 
+target_include_directories(unit_tests++ PUBLIC src)
 target_include_directories(unit_tests PUBLIC src)
-
-add_executable(resaver ${sources} test/integration/resaver.cpp)
 target_include_directories(resaver PUBLIC src)
+
 target_link_libraries(resaver PUBLIC ${XercesC_LIBRARIES} ${TinyXML_LIBRARIES})
+
 
 include (CTest)
 
-add_test ("Unit" unit_tests)
+add_test ("Unit-C++" unit_tests++)
+add_test ("Unit-C" unit_tests)
 add_test ("Resaving" resaver)
 
 find_package(codecov)
 add_coverage(swid)
 add_coverage(unit_tests)
+add_coverage(unit_tests++)
 list(APPEND LCOV_REMOVE_PATTERNS "'/usr/*'")
 list(APPEND LCOV_REMOVE_PATTERNS "'${PROJECT_SOURCE_DIR}/test/*'")
 coverage_evaluate()
